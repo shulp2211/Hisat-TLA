@@ -3963,7 +3963,7 @@ template <typename index_t, typename local_index_t>
 class HI_Aligner {
 
 public:
-	
+
 	/**
 	 * Initialize with index.
 	 */
@@ -4089,7 +4089,80 @@ public:
                 // if(sink.bestPair() >= _minsc[0] + _minsc[1]) break;
             }
         }
-        
+
+        vector<index_t> rmVector; // this vector contine all the coordinate (hi in next loop) of bad candidates.
+
+        for(index_t hi = 0; hi < this->_genomeHits.size(); hi++) {
+            GenomeHit<index_t> &genomeHit = this->_genomeHits[hi];
+            //index_t leftext = (index_t)INDEX_MAX, rightext = (index_t)INDEX_MAX;
+
+            /*if (1) {
+                Read *rd = this->_rds[rdi];
+                if (rd->mate == 1 || rd->mate == 0) {
+                    if (rd->isPlanA()) { // t ->c
+                        if (genomeHit._fw) { //t- > c
+                            if (genomeHit._tidx >= (ref.numRefs() / 2)) { // mapped to a->g
+                                rmVector.push_back(hi);
+                                continue;
+                            }
+                        } else { // a->g
+                            if (genomeHit._tidx < (ref.numRefs() / 2)) { // mapped to t->c
+                                rmVector.push_back(hi);
+                                continue;
+                            }
+                        }
+                    } else {// plan B :a->g
+                        if (genomeHit._fw) { // a->g
+                            if (genomeHit._tidx < (ref.numRefs() / 2)) { // mapped to t->c
+                                rmVector.push_back(hi);
+                                continue;
+                            }
+                        } else { // t->c
+                            if (genomeHit._tidx >= (ref.numRefs() / 2)) { // mapped to a->c
+                                rmVector.push_back(hi);
+                                continue;
+                            }
+                        }
+                    }
+                } else {
+                    if (rd->isPlanA()) { // a ->g
+                        if (genomeHit._fw) { //a- > g
+                            if (genomeHit._tidx < (ref.numRefs() / 2)) { // mapped to t->c
+                                rmVector.push_back(hi);
+                                continue;
+                            }
+                        } else { // t->c
+                            if (genomeHit._tidx >= (ref.numRefs() / 2)) { // mapped to a->g
+                                rmVector.push_back(hi);
+                                continue;
+                            }
+                        }
+                    } else {// plan B :t->c
+                        if (genomeHit._fw) { // t->c
+                            if (genomeHit._tidx >= (ref.numRefs() / 2)) { // mapped to a->g
+                                rmVector.push_back(hi);
+                                continue;
+                            }
+                        } else { // a->g
+                            if (genomeHit._tidx < (ref.numRefs() / 2)) { // mapped to t->c
+                                rmVector.push_back(hi);
+                                continue;
+                            }
+                        }
+                    }
+                }
+            }*/
+        }
+
+        if (rmVector.size() > 0){
+            for (int i = rmVector.size()-1; i >=0; i--){
+                this->_genomeHits.erase(rmVector[i]);
+            }
+        }
+
+
+
+
         // if no concordant pair is found, try to use alignment of one-end
         // as an anchor to align the other-end
         if(this->_paired) {
@@ -4662,6 +4735,7 @@ public:
         // Pick up a candidate from a read or its reverse complement
         // (for pair, also consider mate and its reverse complement)
         while(pickNextReadToSearch(rdi, fw)) {
+
             size_t mineFw = 0, mineRc = 0;
             index_t fwi = (fw ? 0 : 1);
             ReadBWTHit<index_t>& hit = _hits[rdi][fwi];
@@ -4673,6 +4747,8 @@ public:
                 int64_t bestScore = 0;
                 if(rdi == 0) {
                     bestScore = sink.bestUnp1();
+                    //if (rs1u.refcoord)
+
                     if(bestScore >= _minsc[rdi]) {
                         // do not further align this candidate
                         // unless it may be at least as good as the alignment of its reverse complement
@@ -5371,8 +5447,7 @@ public:
      **/
     void addSearched(const GenomeHit<index_t>&       hit,
                      index_t                         rdi);
-    
-    
+
 protected:
   
     Read *   _rds[2];
@@ -5501,6 +5576,7 @@ bool HI_Aligner<index_t, local_index_t>::align(
                                                RandomSource&                    rnd,
                                                AlnSinkWrap<index_t>&            sink)
 {
+
     const ReportingParams& rp = sink.reportingParams();
     index_t fwi = (fw ? 0 : 1);
     assert_lt(rdi, 2);
@@ -6131,7 +6207,7 @@ bool HI_Aligner<index_t, local_index_t>::reportHit(
                  hit.ns(),          // # Ns
                  hit.ngaps(),       // # gaps
                  hit.repeat(),
-                 hit.splicescore(), // splice score
+                 hit.splicescore(), // splice scorehit
                  spliced.second,    // mapped to known transcripts?
                  spliced.first,     // spliced alignment or near splice sites (novel)?
                  hit.trim5(),       // left trim length
@@ -6175,7 +6251,7 @@ bool HI_Aligner<index_t, local_index_t>::reportHit(
     
 
     //rs.setRefNs(nrefn);
-    assert(rs.matchesRef(
+    /*assert(rs.matchesRef(
                          rd,
                          ref,
                          tmp_rf_,
@@ -6186,7 +6262,7 @@ bool HI_Aligner<index_t, local_index_t>::reportHit(
                          raw_matches_,
                          _sharedVars.raw_refbuf2,
                          _sharedVars.reflens,
-                         _sharedVars.refoffs));
+                         _sharedVars.refoffs));*/
     if(ohit == NULL) {
         bool done;
         if(rdi == 0 && !_rightendonly) {

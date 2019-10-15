@@ -25,6 +25,7 @@
 #include "assert_helpers.h"
 #include "alphabet.h"
 #include "random_source.h"
+#include <map>
 
 /**
  * Four kinds of strings defined here:
@@ -56,6 +57,9 @@
  * doing lexicographical comparisons between any of the three categories of
  * strings defined here.
  */
+extern map<char, char> complement4;
+extern map<char, char> dnaReplaceForward;
+extern map<char, char> dnaReplaceBackward;
 
 template<typename T>
 class Class_sstr_len {
@@ -2564,6 +2568,12 @@ std::ostream& operator<< (std::ostream& os, const SStringFixed<T, S>& str) {
 
 extern uint8_t asc2dna[];
 extern uint8_t asc2col[];
+
+//extern uint8_t asc2dna_0[];
+extern uint8_t asc2dna_1[];
+extern uint8_t asc2dna_2[];
+
+
 
 /**
  * Encapsulates a fixed-length DNA string with characters encoded as

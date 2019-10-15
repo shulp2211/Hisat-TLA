@@ -650,6 +650,7 @@ public:
 	    mmFile2_(NULL), \
         _nthreads(1)
 
+        GFM() {}
 	/// Construct a GFM from the given input file
 	GFM(const string& in,
         ALTDB<index_t>* altdb,

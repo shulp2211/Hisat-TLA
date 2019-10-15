@@ -10,8 +10,9 @@ def build_indexes():
     if not os.path.exists("indexes"):
         os.mkdir("indexes")
     os.chdir("indexes")
-    aligners = ["HISAT2", "HISAT", "Bowtie", "STAR", "GSNAP", "BWA", "minimap2"]
-    genomes = ["22_20-21M", "22", "genome"]
+    aligners = ["HISAT2"]
+#, "HISAT", "Bowtie", "STAR", "GSNAP", "BWA", "minimap2"]
+    genomes = ["22-TC-AG", "22"]
     for genome in genomes:
         for aligner in aligners:
             if genome == "genome":

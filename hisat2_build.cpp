@@ -86,6 +86,7 @@ static string repeat_info_fname;
 static string repeat_snp_fname;
 static string repeat_haplotype_fname;
 
+
 static void resetOptions() {
 	verbose        = true;  // be talkative (default)
 	sanityCheck    = 0;     // do slow sanity checks
@@ -151,6 +152,7 @@ enum {
     ARG_REPEAT_INFO,
     ARG_REPEAT_SNP,
     ARG_REPEAT_HAPLOTYPE,
+    //BASE_CHANGE,
 };
 
 /**
@@ -255,6 +257,7 @@ static struct option long_options[] = {
 	{(char*)"reverse-each",   no_argument,       0,            ARG_REVERSE_EACH},
 	{(char*)"usage",          no_argument,       0,            ARG_USAGE},
     {(char*)"wrapper",        required_argument, 0,            ARG_WRAPPER},
+    //{(char*)"br",             required_argument, 0,            BASE_CHANGE},
 	{(char*)0, 0, 0, 0} // terminator
 };
 
@@ -392,7 +395,6 @@ static void parseOptions(int argc, const char **argv) {
             case 'p':
                 nthreads = parseNumber<int>(1, "-p arg must be at least 1");
                 break;
-
 			case -1: /* Done with options. */
 				break;
 			case 0:

@@ -1097,6 +1097,20 @@ public:
 	{
 		assert(rp_.repOk());
 	}
+/*
+	// check if the read align to reference
+	bool hasHit(){
+	    if(rd2_){ // paired end read
+	        return (rs1_.getCur() > 0 || rs2_.getCur() > 0);
+	    }
+	    else{ // signle end read
+	        return rs1u_.getCur() > 0;
+	    }
+	}
+*/
+	void resetInit_(){
+        init_ = false;
+	};
 
 	/**
 	 * Initialize the wrapper with a new read pair and return an

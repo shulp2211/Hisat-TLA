@@ -643,7 +643,7 @@ static struct option long_options[] = {
     {(char*)"novel-splicesite-infile",       required_argument, 0,        ARG_NOVEL_SPLICESITE_INFILE},
     {(char*)"novel-splicesite-outfile",      required_argument, 0,        ARG_NOVEL_SPLICESITE_OUTFILE},
     {(char*)"no-spliced-alignment",   no_argument, 0,        ARG_NO_SPLICED_ALIGNMENT},
-    {(char*)"rna-strandness",   required_argument, 0,        ARG_RNA_STRANDNESS},
+    {(char*)"rna-strandness",   required_argument, 0,        ARG_RNA_STRANDNESS}
 	{(char*)0, 0, 0, 0} // terminator
 };
 
@@ -1480,6 +1480,7 @@ static void parseOption(int next_option, const char *arg) {
             }
             break;
         }
+
 		default:
 			printUsage(cerr);
 			throw 1;

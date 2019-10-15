@@ -285,7 +285,7 @@ def read_genome(genome_filename):
     genome_file.close()
 
     print >> sys.stderr, "genome is loaded"
-    
+
     return chr_dic
 
 
@@ -1985,7 +1985,8 @@ def calculate_read_cost(single_end,
         # ["hisat2", "", "snp_tran", "210", ""],
         # ["hisat2", "", "", "210", ""],
         # ["hisat2", "", "", "", ""],
-        ["hisat2", "", "rep", "", ""],
+        ["hisat2", "", "", "", ""],
+        #["hisat2", "", "rep", "", ""],
         # ["hisat2", "", "rep-100-300", "", ""],
         # ["hisat2", "", "rep_mm", "", ""],
         # ["hisat2", "", "", "", "--sensitive"],
@@ -2002,16 +2003,16 @@ def calculate_read_cost(single_end,
         # ["hisat2", "x1", "snp_tran_ercc", "", ""],
         # ["tophat2", "gtfonly", "", "", ""],
         # ["tophat2", "gtf", "", "", ""],
-        ["star", "", "", "", ""],
+        #["star", "", "", "", ""],
         # ["star", "x2", "", "", ""],
         # ["star", "gtf", "", "", ""],
         # ["bowtie", "", "", "", ""],
-        ["bowtie2", "", "", "", ""],
+        #["bowtie2", "", "", "", ""],
         # ["bowtie2", "", "", "", "-k 10"],
         # ["bowtie2", "", "", "", "-k 1000 --extends 2000"],
         # ["gsnap", "", "", "", ""],
         # ["bwa", "mem", "", "", ""],
-        ["bwa", "mem", "", "", "-a"],
+        #["bwa", "mem", "", "", "-a"],
         # ["hisat2", "", "snp", "", ""],
         # ["hisat2", "", "tran", "", ""],
         # ["hisat2", "", "snp_tran", "", ""],
@@ -2038,7 +2039,7 @@ def calculate_read_cost(single_end,
     if runtime_only:
         verbose = True
 
-    chr_dic = read_genome("../../data/%s.fa" % genome)
+    chr_dic = read_genome("../../data/%s.fa" % '22-TC-AG')
     gtf_junctions = extract_splice_sites("../../data/%s.gtf" % genome)
     repeat_db, repeat_map = read_repeatdb("../../data/%s_rep.rep.info" % genome)
     align_stat = []
@@ -2195,7 +2196,8 @@ def calculate_read_cost(single_end,
                     cmd += [index_cmd]
                     if paired:
                         cmd += ["-1", read1_fname,
-                                "-2", read2_fname]
+                                "-2", read2_fname,
+				"--br TC"]
                     else:
                         cmd += [read1_fname]                        
                 elif aligner == "hisat":

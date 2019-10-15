@@ -30,6 +30,7 @@ template <typename index_t, typename local_index_t>
 class SplicedAligner : public HI_Aligner<index_t, local_index_t> {
 
 public:
+
 	/**
 	 * Initialize with index.
 	 */
@@ -103,6 +104,9 @@ public:
                                index_t                          dep = 0);
 };
 
+
+bool TLA = false;
+
 /**
  * Given a partial alignment of a read, try to further extend
  * the alignment bidirectionally using a combination of
@@ -134,6 +138,8 @@ void SplicedAligner<index_t, local_index_t>::hybridSearch(
     him.localatts++;
     
     const ReportingParams& rp = sink.reportingParams();
+
+    vector<index_t> rmVector; // this vector contine all the coordinate (hi in next loop) of bad candidates.
     
     // before further alignment using local search, extend the partial alignments directly
     // by comparing with the corresponding genomic sequences
@@ -141,6 +147,72 @@ void SplicedAligner<index_t, local_index_t>::hybridSearch(
     for(index_t hi = 0; hi < this->_genomeHits.size(); hi++) {
         GenomeHit<index_t>& genomeHit = this->_genomeHits[hi];
         index_t leftext = (index_t)INDEX_MAX, rightext = (index_t)INDEX_MAX;
+
+        /*if (TLA){
+            Read *rd = this->_rds[rdi];
+            if (rd->mate == 1 || rd->mate == 0) {
+                if (rd->isPlanA()){ // t ->c
+                    if (genomeHit._fw){ //t- > c
+                        if (genomeHit._tidx >= (ref.numRefs()/2)){ // mapped to a->g
+                            rmVector.push_back(hi);
+                            continue;
+                        }
+                    }
+                    else { // a->g
+                        if (genomeHit._tidx < (ref.numRefs()/2)){ // mapped to t->c
+                            rmVector.push_back(hi);
+                            continue;
+                        }
+                    }
+                }
+                else {// plan B :a->g
+                    if (genomeHit._fw){ // a->g
+                        if (genomeHit._tidx < (ref.numRefs()/2)) { // mapped to t->c
+                            rmVector.push_back(hi);
+                            continue;
+                        }
+                    }
+                    else{ // t->c
+                        if (genomeHit._tidx >= (ref.numRefs()/2)){ // mapped to a->c
+                            rmVector.push_back(hi);
+                            continue;
+                        }
+                    }
+                }
+            }
+            else {
+                if (rd->isPlanA()){ // a ->g
+                    if (genomeHit._fw){ //a- > g
+                        if (genomeHit._tidx < (ref.numRefs()/2)){ // mapped to t->c
+                            rmVector.push_back(hi);
+                            continue;
+                        }
+                    }
+                    else { // t->c
+                        if (genomeHit._tidx >= (ref.numRefs()/2)){ // mapped to a->g
+                            rmVector.push_back(hi);
+                            continue;
+                        }
+                    }
+                }
+                else {// plan B :t->c
+                    if (genomeHit._fw){ // t->c
+                        if (genomeHit._tidx >= (ref.numRefs()/2)) { // mapped to a->g
+                            rmVector.push_back(hi);
+                            continue;
+                        }
+                    }
+                    else{ // a->g
+                        if (genomeHit._tidx < (ref.numRefs()/2)){ // mapped to t->c
+                            rmVector.push_back(hi);
+                            continue;
+                        }
+                    }
+                }
+            }
+        }*/
+
+
         genomeHit.extend(
                          *(this->_rds[rdi]),
                          gfm,
@@ -160,10 +232,21 @@ void SplicedAligner<index_t, local_index_t>::hybridSearch(
                          leftext,
                          rightext);
     }
-    
+
+    /*if (rmVector.size() > 0){
+        for (int i = rmVector.size()-1; i >=0; i--){
+            this->_genomeHits.erase(rmVector[i]);
+        }
+    }*/
+
+
+
+
+
     // for the candidate alignments, examine the longest (best) one first
     this->_genomeHits_done.resize(this->_genomeHits.size());
     this->_genomeHits_done.fill(false);
+
     for(size_t hi = 0; hi < this->_genomeHits.size(); hi++) {
         index_t hj = 0;
         for(; hj < this->_genomeHits.size(); hj++) {

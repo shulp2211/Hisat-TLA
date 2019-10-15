@@ -927,6 +927,11 @@ public:
 		}
 	}
 
+	size_t getCur()
+    {
+	    return cur_;
+    }
+
 private:
 
 	/**
