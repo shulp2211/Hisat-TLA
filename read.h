@@ -98,8 +98,9 @@ struct Read {
     void planB(){
 
         if(name.length()>0){
+            ns_ = 0;
             swap(patFw, patFw1);
-            patFw = patFw1;
+            //patFw = patFw1;
             name.insert('*', 0);
             plan = 'B';
             finalize();

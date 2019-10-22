@@ -4090,13 +4090,13 @@ public:
             }
         }
 
-        vector<index_t> rmVector; // this vector contine all the coordinate (hi in next loop) of bad candidates.
+        //vector<index_t> rmVector; // this vector contine all the coordinate (hi in next loop) of bad candidates.
 
-        for(index_t hi = 0; hi < this->_genomeHits.size(); hi++) {
+        /*for(index_t hi = 0; hi < this->_genomeHits.size(); hi++) {
             GenomeHit<index_t> &genomeHit = this->_genomeHits[hi];
             //index_t leftext = (index_t)INDEX_MAX, rightext = (index_t)INDEX_MAX;
 
-            /*if (1) {
+            if (1) {
                 Read *rd = this->_rds[rdi];
                 if (rd->mate == 1 || rd->mate == 0) {
                     if (rd->isPlanA()) { // t ->c
@@ -4151,14 +4151,14 @@ public:
                         }
                     }
                 }
-            }*/
+            }
         }
 
         if (rmVector.size() > 0){
             for (int i = rmVector.size()-1; i >=0; i--){
                 this->_genomeHits.erase(rmVector[i]);
             }
-        }
+        }*/
 
 
 

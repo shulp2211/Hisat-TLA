@@ -65,7 +65,7 @@ MemoryTally gMemTally;
 static EList<string> mates1;  // mated reads (first mate)
 static EList<string> mates2;  // mated reads (second mate)
 static EList<string> mates12; // mated reads (1st/2nd interleaved in 1 file)
-static string adjIdxBase;
+static string adjIdxBase[2];
 bool gColor;              // colorspace (not supported)
 int gVerbose;             // be talkative
 static bool startVerbose; // be talkative at startup
@@ -311,7 +311,8 @@ static void resetOptions() {
 	mates1.clear();
 	mates2.clear();
 	mates12.clear();
-	adjIdxBase	            = "";
+	adjIdxBase[0]	        = "";
+    adjIdxBase[1]	        = "";
 	gColor                  = false;
 	gVerbose                = 0;
 	startVerbose			= 0;
@@ -2007,6 +2008,8 @@ createPatsrcFactory(PairedPatternSource& _patsrc, int tid) {
 	return patsrcFact;
 }
 
+
+
 #define PTHREAD_ATTRS (PTHREAD_CREATE_JOINABLE | PTHREAD_CREATE_DETACHED)
 
 typedef TIndexOffU index_t;
@@ -2014,13 +2017,13 @@ typedef uint16_t local_index_t;
 static PairedPatternSource*              multiseed_patsrc;
 //static HGFM<index_t>*                    multiseed_gfm;
 //static RFM<index_t>*                     multiseed_rgfm;
-static HGFM<index_t>*                    multiseed_gfms[2];
-static RFM<index_t>*                     multiseed_rgfms[2];
+//static HGFM<index_t>*                    multiseed_gfms[2];
+//static RFM<index_t>*                     multiseed_rgfms[2];
 static Scoring*                          multiseed_sc;
 //static BitPairReference*                 multiseed_refs;
 //static BitPairReference*                 multiseed_rrefs;
-static BitPairReference*                 multiseed_refss[2];
-static BitPairReference*                 multiseed_rrefss[2];
+//static BitPairReference*                 multiseed_refss[2];
+//static BitPairReference*                 multiseed_rrefss[2];
 static AlnSink<index_t>*                 multiseed_msink;
 static OutFileBuf*                       multiseed_metricsOfb;
 static SpliceSiteDB*                     ssdb;
@@ -2033,6 +2036,48 @@ static RepeatDB<index_t> *repeatdbs[2];
 static ALTDB<index_t> *raltdbs[2];
 static TranscriptomePolicy*              multiseed_tpol;
 static GraphPolicy*                      gpol;
+
+
+class referenceTLA {
+public:
+    const HGFM<index_t>* multiseed_gfm_A;
+    const HGFM<index_t>* multiseed_gfm_B;
+
+    const RFM<index_t>* multiseed_rgfm_A;
+    const RFM<index_t>* multiseed_rgfm_B;
+
+    const BitPairReference* multiseed_refs_A;
+    const BitPairReference* multiseed_refs_B;
+
+    const BitPairReference* multiseed_rrefs_A;
+    const BitPairReference* multiseed_rrefs_B;
+
+    referenceTLA() {
+
+    }
+
+    void load(vector<HGFM<index_t>* >& gfms,
+              RFM<index_t>* rgfms[2],
+              auto_ptr<BitPairReference> refss[2],
+              BitPairReference* rrefss[2]) {
+
+        multiseed_gfm_A = gfms[0];
+        multiseed_gfm_B = gfms[1];
+
+        multiseed_rgfm_A = rgfms[0];
+        multiseed_rgfm_A = rgfms[1];
+
+        multiseed_refs_A = refss[0].get();
+        multiseed_refs_B = refss[1].get();
+
+        multiseed_rrefs_A = rrefss[0];
+        multiseed_rrefs_B = rrefss[1];
+
+    }
+
+};
+
+referenceTLA refTLA;
 
 /**
  * Metrics for measuring the work done by the outer read alignment
@@ -3149,33 +3194,7 @@ static inline void printEEScoreMsg(
 
 
 
-class referenceTLA {
-public:
-    const HGFM<index_t>& gfm_A     = *multiseed_gfms[0];
-    const HGFM<index_t>& gfm_B     = *multiseed_gfms[1];
 
-    const RFM<index_t>* rgfm_A     = multiseed_rgfms[0];
-    const RFM<index_t>* rgfm_B     = multiseed_rgfms[1];
-
-    const BitPairReference& ref_A  = *multiseed_refss[0];
-    const BitPairReference& ref_B  = *multiseed_refss[1];
-
-    const BitPairReference* rref_A = multiseed_rrefss[0];
-    const BitPairReference* rref_B = multiseed_rrefss[1];
-
-    const ALTDB<index_t>& altdb_A = *altdbs[0];
-    const ALTDB<index_t>& altdb_B = *altdbs[1];
-
-    const RepeatDB<index_t>& repeatdb_A = *repeatdbs[0];
-    const RepeatDB<index_t>& repeatdb_B = *repeatdbs[1];
-
-    const ALTDB<index_t>& raltdb_A = *raltdbs[0];
-    const ALTDB<index_t>& raltdb_B = *raltdbs[1];
-
-    referenceTLA() {
-
-    }
-};
 
 /**
  * Called once per thread.  Sets up per-thread pointers to the shared global
@@ -3195,30 +3214,23 @@ public:
 static void multiseedSearchWorker_hisat2(void *vp) {
 	int tid = *((int*)vp);
 
-	for (int i = 0; i < 2; i++) {
-        assert(multiseed_gfms[i] != NULL);
-	}
-    //HGFM<index_t> gfms[2];
 
-    //const HGFM<index_t>& gfms[2] = {*multiseed_gfms[0], *multiseed_gfms[1]};
-    //const RFM<index_t>* rgfms[2];
-    //const BitPairReference* refs[2];
-    //const BitPairReference* rrefs[2];
 
-    referenceTLA refTLA;
-
-    /*for (int i = 0; i < 2; i++) {
-        rgfms[i] = multiseed_rgfms[i];
-        rrefs[i] = multiseed_rrefss[i];
-    }*/
-
+	assert(refTLA.multiseed_gfm_A != NULL);
+    assert(refTLA.multiseed_gfm_B != NULL);
 	assert(multiseedMms == 0);
+
+
 	PairedPatternSource&             patsrc   = *multiseed_patsrc;
-	//const HGFM<index_t>&             gfms      = *multiseed_gfms;
-    //const RFM<index_t>*              rgfms     = multiseed_rgfms;
+	const HGFM<index_t>&             gfm_A      = *refTLA.multiseed_gfm_A;
+    const HGFM<index_t>&             gfm_B      = *refTLA.multiseed_gfm_B;
+    const RFM<index_t>*              rgfm_A     = refTLA.multiseed_rgfm_A;
+    const RFM<index_t>*              rgfm_B     = refTLA.multiseed_rgfm_B;
 	const Scoring&                   sc       = *multiseed_sc;
-    //const BitPairReference&          ref      = *multiseed_refss;
-    //const BitPairReference*          rref     = multiseed_rrefss;
+    const BitPairReference&          ref_A      = *refTLA.multiseed_refs_A;
+    const BitPairReference&          ref_B      = *refTLA.multiseed_refs_B;
+    const BitPairReference*          rref_A     = refTLA.multiseed_rrefs_A;
+    const BitPairReference*          rref_B     = refTLA.multiseed_rrefs_B;
 	AlnSink<index_t>&                msink    = *multiseed_msink;
 	OutFileBuf*                      metricsOfb = multiseed_metricsOfb;
     
@@ -3262,8 +3274,7 @@ static void multiseedSearchWorker_hisat2(void *vp) {
                                    no_spliced_alignment ? NULL : ssdb,
                                    thread_rids_mindist);
     
-    SplicedAligner<index_t, local_index_t> splicedAligner(
-                                                          refTLA.gfm_A,
+    SplicedAligner<index_t, local_index_t> splicedAligner(gfm_A,
                                                           anchorStop,
                                                           thread_rids_mindist);
 	SwAligner sw;
@@ -3641,13 +3652,13 @@ static void multiseedSearchWorker_hisat2(void *vp) {
                                 pepol,
                                 *multiseed_tpol,
                                 *gpol,
-                                refTLA.gfm_A,
-                                refTLA.rgfm_A,
-                                refTLA.altdb_A,
-                                refTLA.repeatdb_A,
-                                refTLA.raltdb_A,
-                                refTLA.ref_A,
-                                refTLA.rref_A,
+                                gfm_A,
+                                rgfm_A,
+                                *altdbs[0],
+                                *repeatdbs[0],
+                                *raltdbs[0],
+                                ref_A,
+                                rref_A,
                                 sw,
                                 *ssdb,
                                 wlm,
@@ -3662,13 +3673,13 @@ static void multiseedSearchWorker_hisat2(void *vp) {
                                 pepol,
                                 *multiseed_tpol,
                                 *gpol,
-                                refTLA.gfm_B,
-                                refTLA.rgfm_B,
-                                refTLA.altdb_B,
-                                refTLA.repeatdb_B,
-                                refTLA.raltdb_B,
-                                refTLA.ref_B,
-                                refTLA.rref_B,
+                                gfm_B,
+                                rgfm_B,
+                                *altdbs[1],
+                                *repeatdbs[1],
+                                *raltdbs[1],
+                                ref_B,
+                                rref_B,
                                 sw,
                                 *ssdb,
                                 wlm,
@@ -3788,30 +3799,20 @@ static void multiseedSearch(
                             AlnSink<index_t>& msink,      // hit sink
                             vector<HGFM<index_t>* > gfms,           // index of original text
                             RFM<index_t>* rgfms[2],           // index of repeat sequences
-                            BitPairReference* refss0,       // base reference
-                            BitPairReference* refss1,
+                            auto_ptr<BitPairReference> refss[2],       // base reference
                             BitPairReference* rrefss[2],      // repeat reference
                             OutFileBuf *metricsOfb)
 {
     multiseed_patsrc       = &patsrc;
 	multiseed_msink        = &msink;
-	for (int i = 0; i < 2; i++) {
-        multiseed_gfms[i] = gfms[i];
-        multiseed_rgfms[i] = rgfms[i];
-        //multiseed_refss[i] = refss[i];
-        multiseed_rrefss[i] = rrefss[i];
 
-	}
-    multiseed_refss[0] = refss0;
-    multiseed_refss[1] = refss1;
-	//multiseed_gfm          = &gfm;
-    //multiseed_rgfm         = rgfm;
+	refTLA.load(gfms, rgfms, refss, rrefss);
+
 	multiseed_sc           = &sc;
     multiseed_tpol         = &tpol;
     gpol                   = &gp;
 	multiseed_metricsOfb   = metricsOfb;
-	//multiseed_refs         = refs;
-    //multiseed_rrefs        = rrefs;
+
 	AutoArray<tthread::thread*> threads(nthreads);
 	AutoArray<int> tids(nthreads);	
 	// Start the metrics thread
@@ -3909,9 +3910,9 @@ static void driver(
 		cerr << "About to initialize fw GFM: "; logTime(cerr, true);
 	}
 
-    ALTDB<index_t> *altdbs[2];
-    RepeatDB<index_t> *repeatdbs[2];
-    ALTDB<index_t> *raltdbs[2];
+    //ALTDB<index_t> *altdbs[2];
+    //RepeatDB<index_t> *repeatdbs[2];
+    //ALTDB<index_t> *raltdbs[2];
 
     for (int i = 0; i < 2; i++) {
         altdbs[i] = new ALTDB<index_t>();
@@ -3920,9 +3921,10 @@ static void driver(
     }
 
     vector<HGFM<index_t>* >gfms;
-
-
     RFM<index_t>* rgfms[2];
+    for (int i = 0; i < 2; i++) {
+        rgfms[i] = NULL;
+    }
     bool rep_index_exists[2]{false};
     string rep_adjIdxBases[2];
 
@@ -3931,11 +3933,12 @@ static void driver(
     raltdb = new ALTDB<index_t>();*/
 
 //    gfms.resize(2);
-    for (int i = 0; i < 2; i++) {
-        adjIdxBase = adjustEbwtBase(argv0, bt2indexBases[i], gVerbose);
+
+    for (int j = 0; j < 2; j++) {
+        adjIdxBase[j] = adjustEbwtBase(argv0, bt2indexBases[j], gVerbose);
         HGFM<index_t, local_index_t> *tmp_gfm = new HGFM<index_t, local_index_t>(
-                adjIdxBase,
-                altdbs[i],
+                adjIdxBase[j],
+                altdbs[j],
                 NULL,
                 NULL,
                 -1,       // fw index
@@ -3961,27 +3964,29 @@ static void driver(
         if(sanityCheck && !os.empty()) {
             // Sanity check number of patterns and pattern lengths in GFM
             // against original strings
-            assert_eq(os.size(), gfms[i]->nPat());
+            assert_eq(os.size(), gfms[j]->nPat());
+
             for(size_t i = 0; i < os.size(); i++) {
-                assert_eq(os[i].length(), gfms[i]->plen()[i]);
+                assert_eq(os[i].length(), gfms[j]->plen()[i]);
             }
+
         }
         if(sanityCheck && !os.empty()) {
-            gfms[i]->loadIntoMemory(
+            gfms[j]->loadIntoMemory(
                     -1, // fw index
                     true, // load SA sample
                     true, // load ftab
                     true, // load rstarts
                     !noRefNames,
                     startVerbose);
-            gfms[i]->checkOrigs(os, false);
-            gfms[i]->evictFromMemory();
+            gfms[j]->checkOrigs(os, false);
+            gfms[j]->evictFromMemory();
         }
         {
             // Load the other half of the index into memory
-            assert(!gfms[i]->isInMemory());
+            assert(!gfms[j]->isInMemory());
             Timer _t(cerr, "Time loading forward index: ", timing);
-            gfms[i]->loadIntoMemory(
+            gfms[j]->loadIntoMemory(
                     -1, // not the reverse index
                     true,         // load SA samp? (yes, need forward index's SA samp)
                     true,         // load ftab (in forward index)
@@ -3990,17 +3995,18 @@ static void driver(
                     startVerbose);
         }
 
-        rep_adjIdxBases[i] = adjIdxBase + ".rep";
+        rep_adjIdxBases[j] = adjIdxBase[j] + ".rep";
         //bool rep_index_exists = false;
         {
-            std::ifstream infile((rep_adjIdxBases[i] + ".1." + gfm_ext.c_str()).c_str());
-            rep_index_exists[i] = infile.good();
+            std::ifstream infile((rep_adjIdxBases[j] + ".1." + gfm_ext.c_str()).c_str());
+            rep_index_exists[j] = infile.good();
         }
-        if(rep_index_exists && use_repeat_index) {
-            rgfms[i] = new RFM<index_t>(
-                    rep_adjIdxBases[i],
-                    raltdbs[i],
-                    repeatdbs[i],
+
+        if(rep_index_exists[j] && use_repeat_index) {
+            rgfms[j] = new RFM<index_t>(
+                    rep_adjIdxBases[j],
+                    raltdbs[j],
+                    repeatdbs[j],
                     &readLens,
                     -1,       // fw index
                     true,     // index is for the forward direction
@@ -4045,9 +4051,9 @@ static void driver(
 #endif
             {
                 // Load the other half of the index into memory
-                assert(!rgfms[i]->isInMemory());
+                assert(!rgfms[j]->isInMemory());
                 Timer _t(cerr, "Time loading forward index: ", timing);
-                rgfms[i]->loadIntoMemory(
+                rgfms[j]->loadIntoMemory(
                         -1, // not the reverse index
                         true,         // load SA samp? (yes, need forward index's SA samp)
                         true,         // load ftab (in forward index)
@@ -4055,17 +4061,14 @@ static void driver(
                         !noRefNames,  // load names?
                         startVerbose);
 
-                repeatdbs[i]->construct(gfms[i]->rstarts(), gfms[i]->nFrag());
+                repeatdbs[j]->construct(gfms[j]->rstarts(), gfms[j]->nFrag());
             }
         }
 
         if(!saw_k) {
-            if(gfms[i]->gh().linearFM()) khits = 5;
+            if(gfms[j]->gh().linearFM()) khits = 5;
             else                    khits = 10;
         }
-
-
-
     }
 
 
@@ -4242,106 +4245,112 @@ static void driver(
 		for(size_t i = 0; i < gfms[0]->nPat(); i++) {
 			reflens.push_back(gfms[0]->plen()[i]);
 		}
-		EList<string> refnames;
-		readEbwtRefnames<index_t>(adjIdxBase, refnames);
-        EList<size_t> replens;
-        EList<string> repnames;
 
+		EList<string> refnames[2];
+        EList<size_t> replens[2];
+        EList<string> repnames[2];
+        EList<size_t> empty_replens[2];
+        EList<string> empty_repnames[2];
 
-        for (int i = 0; i < 2; i++) {
-            if(rep_index_exists[i] && use_repeat_index) {
-                rgfms[i]->getReferenceNames(repnames);
-                rgfms[i]->getReferenceLens(replens);
+        for (int j = 0; j < 2; j++) {
+            readEbwtRefnames<index_t>(adjIdxBase[j], refnames[j]);
+            if (rep_index_exists[j] && use_repeat_index) {
+                rgfms[j]->getReferenceNames(repnames[j]);
+                rgfms[j]->getReferenceLens(replens[j]);
             }
-        }
 
-        if(rmChrName && addChrName) {
-            cerr << "Error: --remove-chrname and --add-chrname cannot be used at the same time" << endl;
-            throw 1;
-        }
-        if(rmChrName) {
-            for(size_t i = 0; i < refnames.size(); i++) {
-                string& refname = refnames[i];
-                if(refname.find("chr") == 0) {
-                    refname = refname.substr(3);
+            if(rmChrName && addChrName) {
+                cerr << "Error: --remove-chrname and --add-chrname cannot be used at the same time" << endl;
+                throw 1;
+            }
+            if(rmChrName) {
+                for(size_t i = 0; i < refnames[j].size(); i++) {
+                    string& refname = refnames[j][i];
+                    if(refname.find("chr") == 0) {
+                        refname = refname.substr(3);
+                    }
+                }
+            } else if(addChrName) {
+                for(size_t i = 0; i < refnames[j].size(); i++) {
+                    string& refname = refnames[j][i];
+                    if(refname.find("chr") != 0) {
+                        refname = string("chr") + refname;
+                    }
                 }
             }
-        } else if(addChrName) {
-            for(size_t i = 0; i < refnames.size(); i++) {
-                string& refname = refnames[i];
-                if(refname.find("chr") != 0) {
-                    refname = string("chr") + refname;
-                }
-            }
+
+
+
         }
 
-        EList<size_t> empty_replens;
-        EList<string> empty_repnames;
-		SamConfig<index_t> samc(
-			refnames,               // reference sequence names
-			reflens,                // reference sequence lengths
-            repeat ? repnames : empty_repnames, // repeat sequence names
-            repeat ? replens : empty_replens,   // repeat sequence lengths
-			samTruncQname,          // whether to truncate QNAME to 255 chars
-			samOmitSecSeqQual,      // omit SEQ/QUAL for 2ndary alignments?
-			samNoUnal,              // omit unaligned-read records?
-			string("hisat2"),       // program id
-			string("hisat2"),       // program name
-			string(HISAT2_VERSION), // program version
-			argstr,                 // command-line
-			rgs_optflag,            // read-group string
-            rna_strandness,
-			sam_print_as,
-			sam_print_xs,
-			sam_print_xss,
-			sam_print_yn,
-			sam_print_xn,
-			sam_print_cs,
-			sam_print_cq,
-			sam_print_x0,
-			sam_print_x1,
-			sam_print_xm,
-			sam_print_xo,
-			sam_print_xg,
-			sam_print_nm,
-			sam_print_md,
-			sam_print_yf,
-			sam_print_yi,
-			sam_print_ym,
-			sam_print_yp,
-			sam_print_yt,
-			sam_print_ys,
-			sam_print_zs,
-			sam_print_xr,
-			sam_print_xt,
-			sam_print_xd,
-			sam_print_xu,
-			sam_print_yl,
-			sam_print_ye,
-			sam_print_yu,
-			sam_print_xp,
-			sam_print_yr,
-			sam_print_zb,
-			sam_print_zr,
-			sam_print_zf,
-			sam_print_zm,
-			sam_print_zi,
-			sam_print_zp,
-			sam_print_zu,
-            sam_print_xs_a,
-            sam_print_nh);
-		// Set up hit sink; if sanityCheck && !os.empty() is true,
-		// then instruct the sink to "retain" hits in a vector in
-		// memory so that we can easily sanity check them later on
-		AlnSink<index_t> *mssink = NULL;
+        SamConfig<index_t> samc(
+                refnames[0],               // reference sequence names
+                reflens,                // reference sequence lengths
+                repeat ? repnames[0] : empty_repnames[0], // repeat sequence names
+                repeat ? replens[0] : empty_replens[0],   // repeat sequence lengths
+                samTruncQname,          // whether to truncate QNAME to 255 chars
+                samOmitSecSeqQual,      // omit SEQ/QUAL for 2ndary alignments?
+                samNoUnal,              // omit unaligned-read records?
+                string("hisat2"),       // program id
+                string("hisat2"),       // program name
+                string(HISAT2_VERSION), // program version
+                argstr,                 // command-line
+                rgs_optflag,            // read-group string
+                rna_strandness,
+                sam_print_as,
+                sam_print_xs,
+                sam_print_xss,
+                sam_print_yn,
+                sam_print_xn,
+                sam_print_cs,
+                sam_print_cq,
+                sam_print_x0,
+                sam_print_x1,
+                sam_print_xm,
+                sam_print_xo,
+                sam_print_xg,
+                sam_print_nm,
+                sam_print_md,
+                sam_print_yf,
+                sam_print_yi,
+                sam_print_ym,
+                sam_print_yp,
+                sam_print_yt,
+                sam_print_ys,
+                sam_print_zs,
+                sam_print_xr,
+                sam_print_xt,
+                sam_print_xd,
+                sam_print_xu,
+                sam_print_yl,
+                sam_print_ye,
+                sam_print_yu,
+                sam_print_xp,
+                sam_print_yr,
+                sam_print_zb,
+                sam_print_zr,
+                sam_print_zf,
+                sam_print_zm,
+                sam_print_zi,
+                sam_print_zp,
+                sam_print_zu,
+                sam_print_xs_a,
+                sam_print_nh);
+        // Set up hit sink; if sanityCheck && !os.empty() is true,
+        // then instruct the sink to "retain" hits in a vector in
+        // memory so that we can easily sanity check them later on
+
+
+        AlnSink<index_t> *mssink = NULL;
+
 
 
         auto_ptr<BitPairReference>  refss[2];
-        for (int i = 0; i < 2; i++) {
+        for (int j = 0; j < 2; j++) {
             Timer *_tRef = new Timer(cerr, "Time loading reference: ", timing);
-            refss[i] = auto_ptr<BitPairReference> (
+            refss[j] = auto_ptr<BitPairReference> (
                                                         new BitPairReference(
-                                                                adjIdxBase,
+                                                                adjIdxBase[j],
                                                                 NULL,
                                                                 false,
                                                                 sanityCheck,
@@ -4355,18 +4364,18 @@ static void driver(
                                                                 startVerbose)
                                                                 );
             delete _tRef;
-            if(!refss[i]->loaded()) throw 1;
+            if(!refss[j]->loaded()) throw 1;
 
         }
 
         
         BitPairReference* rrefss[2]{NULL};
 
-        for (int i = 0; i < 2; i++) {
-            if (rep_index_exists[i] && use_repeat_index) {
-                const EList<uint8_t> &included = rgfms[i]->getReadIncluded();
-                rrefss[i] = new BitPairReference(
-                        rep_adjIdxBases[i],
+        for (int j = 0; j < 2; j++) {
+            if (rep_index_exists[j] && use_repeat_index) {
+                const EList<uint8_t> &included = rgfms[j]->getReadIncluded();
+                rrefss[j] = new BitPairReference(
+                        rep_adjIdxBases[j],
                         &included,
                         false,
                         sanityCheck,
@@ -4378,7 +4387,7 @@ static void driver(
                         mmSweep,
                         gVerbose,
                         startVerbose);
-                if (!rrefss[i]->loaded()) throw 1;
+                if (!rrefss[j]->loaded()) throw 1;
             }
         }
         
@@ -4403,7 +4412,7 @@ static void driver(
         bool read = knownSpliceSiteInfile != "" || novelSpliceSiteInfile != "" || useTempSpliceSite || altdbs[0]->hasSpliceSites();
         ssdb = new SpliceSiteDB(
                                 *(refss[0].get()),
-                                refnames,
+                                refnames[0],
                                 nthreads > 1, // thread-safe
                                 write, // write?
                                 read);  // read?
@@ -4429,8 +4438,8 @@ static void driver(
 				mssink = new AlnSinkSam<index_t>(
                                                  oq,           // output queue
                                                  samc,         // settings & routines for SAM output
-                                                 refnames,     // reference names
-                                                 repnames,     // repeat names
+                                                 refnames[0],     // reference names
+                                                 repnames[0],     // repeat names
                                                  gQuiet,       // don't print alignment summary at end
                                                  altdbs[0],
                                                  ssdb);
@@ -4465,14 +4474,13 @@ static void driver(
                         *mssink, // hit sink
                         gfms,     // BWT
                         rgfms,
-                        refss[0].get(),
-                        refss[1].get(),
+                        refss,
                         rrefss,
                         metricsOfb);
 		// Evict any loaded indexes from memory
-		for (int i = 0; i < 2; i++) {
-            if(gfms[i].isInMemory()) {
-                gfms[i].evictFromMemory();
+		for (int j = 0; j < 2; j++) {
+            if(gfms[j]->isInMemory()) {
+                gfms[j]->evictFromMemory();
             }
 		}
 
@@ -4520,7 +4528,9 @@ static void driver(
         delete ssdb;
 		delete metricsOfb;
         for (int i = 0; i < 2; i++) {
-            delete rgfms[i];
+            if(rep_index_exists[i] && use_repeat_index) {
+                delete rgfms[i];
+            }
             delete rrefss[i];
             delete altdbs[i];
             delete repeatdbs[i];
