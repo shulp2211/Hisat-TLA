@@ -834,14 +834,8 @@ bool FastaPatternSource::read(
 			if(c == '.') c = 'N';
 		}
 		if(asc2dnacat[c] > 0 && begin++ >= mytrim5) {
-            if (paired_type == 1){
-                r.patFw.append(asc2dna_1[c]);
-                r.patFw1.append(asc2dna_2[c]);
-            }
-            else{
-                r.patFw.append(asc2dna_2[c]);
-                r.patFw1.append(asc2dna_1[c]);
-            }
+		    r.patFw.append(asc2dna_1[c]);
+		    r.patFw1.append(asc2dna_2[c]);
 			r.qual.append('I');
 		}
 		if(fb_.peek() == '>') break;
@@ -957,15 +951,9 @@ bool FastqPatternSource::read(
 			if(isalpha(c)) {
 				// If it's past the 5'-end trim point
 				if(charsRead >= trim5) {
-                        if (paired_type == 1){
-                            r.patFw.append(asc2dna_1[c]);
-                            r.patFw1.append(asc2dna_2[c]);
-                        }
-                        else{
-                            r.patFw.append(asc2dna_2[c]);
-                            r.patFw1.append(asc2dna_1[c]);
-                        }
-                        (*dstLenCur)++;
+				    r.patFw.append(asc2dna_1[c]);
+				    r.patFw1.append(asc2dna_2[c]);
+				    (*dstLenCur)++;
 				}
                 charsRead++;
 			} else if(fuzzy_ && c == ' ') {
