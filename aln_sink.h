@@ -28,6 +28,7 @@
 #include "simple_func.h"
 #include "outq.h"
 #include <utility>
+#include <vector>
 #include "alt.h"
 #include "splice_site.h"
 
@@ -409,7 +410,28 @@ public:
 	};
 	
 	ReportingState(const ReportingParams& p) : p_(p) { reset(); }
-	
+
+    ReportingState operator=(ReportingState& copySource) {
+        state_ = copySource.state_;
+        paired_ = copySource.paired_;;
+        nconcord_ = copySource.nconcord_;
+        ndiscord_ = copySource.ndiscord_;
+        nunpair1_ = copySource.nunpair1_;
+        nunpair2_ = copySource.nunpair2_;
+        nunpairRepeat1_ = copySource.nunpairRepeat1_;
+        nunpairRepeat2_ = copySource.nunpairRepeat2_;
+        doneConcord_ = copySource.doneConcord_;
+        doneDiscord_ = copySource.doneDiscord_;
+        doneUnpair_  = copySource.doneUnpair_;
+        doneUnpair1_ = copySource.doneUnpair1_;
+        doneUnpair2_ = copySource.doneUnpair2_;
+        exitConcord_ = copySource.exitConcord_;
+        exitDiscord_ = copySource.exitDiscord_;
+        exitUnpair1_ = copySource.exitUnpair1_;
+        exitUnpair2_ = copySource.exitUnpair2_;
+        concordBest_ = copySource.concordBest_;
+        done_ = copySource.done_;
+    }
 	/**
 	 * Set all state to uninitialized defaults.
 	 */
@@ -563,6 +585,13 @@ public:
 	inline int exitUnpaired2()  const { return exitUnpair2_; }
     
     inline int64_t concordBest() const { return concordBest_; }
+
+    void addNumUnpaired1() {
+        nunpair1_++;
+	}
+    void addNumUnpaired2() {
+        nunpair2_++;
+    }
 
 #ifndef NDEBUG
 	/**
@@ -1097,17 +1126,7 @@ public:
 	{
 		assert(rp_.repOk());
 	}
-/*
-	// check if the read align to reference
-	bool hasHit(){
-	    if(rd2_){ // paired end read
-	        return (rs1_.getCur() > 0 || rs2_.getCur() > 0);
-	    }
-	    else{ // signle end read
-	        return rs1u_.getCur() > 0;
-	    }
-	}
-*/
+
 	void resetInit_(){
         init_ = false;
 	};
@@ -1425,6 +1444,46 @@ public:
         }
         
         return pair<index_t, index_t>(numGenome, numRepeat);
+    }
+
+    /*pair<EList<AlnRes>, EList<AlnRes> > getAlignmentResult() {
+        return make_pair(rs1u_, rs2u_);
+    } */
+
+    void combineAlignmentResult(AlnSinkWrap<index_t> mSinkWarp) {
+
+        if (this->rs1u_.empty() && this->rs1u_.empty()) {
+            return;
+        } else if (!this->rs1u_.empty() && mSinkWarp.rs1u_.empty()) {
+            return;
+        } else if (this->rs1u_.empty() && !mSinkWarp.rs1u_.empty()){
+            this->rs1u_ = mSinkWarp.rs1u_;
+            this->st_ = mSinkWarp.st_;
+        } else if (this->rs1u_[0].score() > mSinkWarp.rs1u_[0].score()) {
+            return;
+        }  else if (this->rs1u_[0].score() < mSinkWarp.rs1u_[0].score()) {
+            this->rs1u_ = mSinkWarp.rs1u_;
+            this->st_ = mSinkWarp.st_;
+        } else {
+            vector<int> addVector;
+            for (int i = 0; i < mSinkWarp.rs1u_.size(); i++) {
+                auto coord = mSinkWarp.rs1u_[i].refcoord();
+                for (int j = 0; j < this->rs1u_.size(); j++) {
+                    if (coord == this->rs1u_[j].refcoord()) {
+                        break;
+                    }
+                    if (j == this->rs1u_.size()-1) {
+                        addVector.push_back(i);
+                    }
+                }
+            }
+            if (!addVector.empty()) {
+                for (int i = 0; i < addVector.size(); i++) {
+                    this->rs1u_.push_back(mSinkWarp.rs1u_[addVector[i]]);
+                    this->st_.addNumUnpaired1();
+                }
+            }
+        }
     }
 
 protected:
@@ -2010,7 +2069,7 @@ void AlnSinkWrap<index_t>::finishRead(
 					  unpair1Max,
 					  unpair2Max);
 		assert_leq(nconcord, rs1_.size());
-		assert_leq(nunpair1, rs1u_.size());
+		//assert_leq(nunpair1, rs1u_.size());
 		assert_leq(nunpair2, rs2u_.size());
 		assert_leq(ndiscord, 1);
 		assert_gt(rp_.khits, 0);

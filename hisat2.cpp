@@ -3263,6 +3263,7 @@ static void multiseedSearchWorker_hisat2(void *vp) {
     
 	// Instantiate a mapping quality calculator
 	auto_ptr<Mapq> bmapq(new_mapq(mapqv, scoreMin, sc));
+
 	
 	// Make a per-thread wrapper for the global MHitSink object.
 	AlnSinkWrap<index_t> msinkwrap(
@@ -3273,7 +3274,9 @@ static void multiseedSearchWorker_hisat2(void *vp) {
                                    secondary,     // secondary alignments
                                    no_spliced_alignment ? NULL : ssdb,
                                    thread_rids_mindist);
-    
+
+	vector<AlnSinkWrap<index_t> > msinkwraps;
+
     SplicedAligner<index_t, local_index_t> splicedAligner(gfm_A,
                                                           anchorStop,
                                                           thread_rids_mindist);
@@ -3421,11 +3424,11 @@ static void multiseedSearchWorker_hisat2(void *vp) {
 			// Try to align this read
 			while(retry || ps->isPlanA) {
                 //
-
+                msinkwrap.resetInit_();
                 if (!retry)
                 {
                     ps->planB(); // use patFW1 for alignment
-                    msinkwrap.resetInit_();
+
 
                     if(metricsIval > 0 &&
                        (metricsOfb != NULL || metricsStderr) &&
@@ -3738,35 +3741,66 @@ static void multiseedSearchWorker_hisat2(void *vp) {
                     assert_leq(prm.nUgFail,  streak[i]);
                     assert_leq(prm.nEeFail,  streak[i]);
                 }
-                
-				// Commit and report paired-end/unpaired alignments
-				//if (!(ps->isPlanA)) {
-                msinkwrap.finishRead(
-                        NULL,
-                        NULL,
-                        exhaustive[0],        // exhausted seed hits for mate 1?
-                        exhaustive[1],        // exhausted seed hits for mate 2?
-                        nfilt[0],
-                        nfilt[1],
-                        scfilt[0],
-                        scfilt[1],
-                        lenfilt[0],
-                        lenfilt[1],
-                        qcfilt[0],
-                        qcfilt[1],
-                        sortByScore,          // prioritize by alignment score
-                        rnd,                  // pseudo-random generator
-                        rpm,                  // reporting metrics
-                        prm,                  // per-read metrics
-                        sc,                   // scoring scheme
-                        !seedSumm,            // suppress seed summaries?
-                        seedSumm,             //rdid suppress alignments?
-                        templateLenAdjustment);
-                assert(!retry || msinkwrap.empty());
-                //}
-                //ps->planB(); // use patFW1 for alignment
-                //msinkwrap.resetInit_();
+
+                msinkwraps.push_back(msinkwrap);
+
+                //assert(!retry || msinkwrap.empty());
 			} // while(retry)
+			//int bestScore = numeric_limits<int>::min();
+
+            for (int i  = 1; i < msinkwraps.size(); i++) {
+                msinkwraps[0].combineAlignmentResult(msinkwraps[i]);
+            }
+
+
+
+            // Commit and report paired-end/unpaired alignments
+
+            msinkwraps[0].finishRead(
+                    NULL,
+                    NULL,
+                    exhaustive[0],        // exhausted seed hits for mate 1?
+                    exhaustive[1],        // exhausted seed hits for mate 2?
+                    nfilt[0],
+                    nfilt[1],
+                    scfilt[0],
+                    scfilt[1],
+                    lenfilt[0],
+                    lenfilt[1],
+                    qcfilt[0],
+                    qcfilt[1],
+                    sortByScore,          // prioritize by alignment score
+                    rnd,                  // pseudo-random generator
+                    rpm,                  // reporting metrics
+                    prm,                  // per-read metrics
+                    sc,                   // scoring scheme
+                    !seedSumm,            // suppress seed summaries?
+                    seedSumm,             //rdid suppress alignments?
+                    templateLenAdjustment);
+
+            /*msinkwrap.finishRead(
+                    NULL,
+                    NULL,
+                    exhaustive[0],        // exhausted seed hits for mate 1?
+                    exhaustive[1],        // exhausted seed hits for mate 2?
+                    nfilt[0],
+                    nfilt[1],
+                    scfilt[0],
+                    scfilt[1],
+                    lenfilt[0],
+                    lenfilt[1],
+                    qcfilt[0],
+                    qcfilt[1],
+                    sortByScore,          // prioritize by alignment score
+                    rnd,                  // pseudo-random generator
+                    rpm,                  // reporting metrics
+                    prm,                  // per-read metrics
+                    sc,                   // scoring scheme
+                    !seedSumm,            // suppress seed summaries?
+                    seedSumm,             //rdid suppress alignments?
+                    templateLenAdjustment);*/
+            //assert(!retry || msinkwrap.empty());
+            msinkwraps.clear();
 		} // if(rdid >= skipReads && rdid < qUpto)
 		else if(rdid >= qUpto) {
 			break;

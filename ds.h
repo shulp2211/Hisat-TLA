@@ -369,7 +369,7 @@ public:
 	 * Make this object into a copy of o by allocat
 	 */
 	EList<T, S>& operator=(const EList<T, S>& o) {
-		assert_eq(cat_, o.cat());
+		//assert_eq(cat_, o.cat());
 		if(o.cur_ == 0) {
 			// Nothing to copy
 			cur_ = 0;

@@ -524,7 +524,6 @@ public:
 
 	void planB(){
 	    buf1_.planB();
-	    //if ()
         buf2_.planB();
         isPlanA = false;
 	}
