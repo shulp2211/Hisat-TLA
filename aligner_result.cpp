@@ -876,7 +876,7 @@ bool StackedAln::buildMdz() {
 			mdzChr_.push_back('-');
 			mdzRun_.push_back(run - ninserts - nskips);
 		} else if(op == 'X') {
-			//assert_neq(stackRef_[i], stackRead_[i]);
+			assert_neq(stackRef_[i], stackRead_[i]);
 			mdzOp_.push_back('X'); // = X or G
 			mdzChr_.push_back(stackRef_[i]);
 			mdzRun_.push_back(1);

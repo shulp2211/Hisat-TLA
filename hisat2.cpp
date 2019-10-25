@@ -3275,7 +3275,7 @@ static void multiseedSearchWorker_hisat2(void *vp) {
                                    no_spliced_alignment ? NULL : ssdb,
                                    thread_rids_mindist);
 
-	vector<AlnSinkWrap<index_t> > msinkwraps;
+	//vector<AlnSinkWrap<index_t> > msinkwraps;
 
     SplicedAligner<index_t, local_index_t> splicedAligner(gfm_A,
                                                           anchorStop,
@@ -3742,21 +3742,42 @@ static void multiseedSearchWorker_hisat2(void *vp) {
                     assert_leq(prm.nEeFail,  streak[i]);
                 }
 
-                msinkwraps.push_back(msinkwrap);
+                msinkwrap.finishRead(
+                        NULL,
+                        NULL,
+                        exhaustive[0],        // exhausted seed hits for mate 1?
+                        exhaustive[1],        // exhausted seed hits for mate 2?
+                        nfilt[0],
+                        nfilt[1],
+                        scfilt[0],
+                        scfilt[1],
+                        lenfilt[0],
+                        lenfilt[1],
+                        qcfilt[0],
+                        qcfilt[1],
+                        sortByScore,          // prioritize by alignment score
+                        rnd,                  // pseudo-random generator
+                        rpm,                  // reporting metrics
+                        prm,                  // per-read metrics
+                        sc,                   // scoring scheme
+                        !seedSumm,            // suppress seed summaries?
+                        seedSumm,             //rdid suppress alignments?
+                        templateLenAdjustment);
+                //msinkwraps.push_back(msinkwrap);
 
                 //assert(!retry || msinkwrap.empty());
 			} // while(retry)
 			//int bestScore = numeric_limits<int>::min();
 
-            for (int i  = 1; i < msinkwraps.size(); i++) {
+            /*for (int i  = 1; i < msinkwraps.size(); i++) {
                 msinkwraps[0].combineAlignmentResult(msinkwraps[i]);
-            }
+            }*/
 
 
 
             // Commit and report paired-end/unpaired alignments
 
-            msinkwraps[0].finishRead(
+            /*msinkwraps[0].finishRead(
                     NULL,
                     NULL,
                     exhaustive[0],        // exhausted seed hits for mate 1?
@@ -3776,7 +3797,7 @@ static void multiseedSearchWorker_hisat2(void *vp) {
                     sc,                   // scoring scheme
                     !seedSumm,            // suppress seed summaries?
                     seedSumm,             //rdid suppress alignments?
-                    templateLenAdjustment);
+                    templateLenAdjustment);*/
 
             /*msinkwrap.finishRead(
                     NULL,
@@ -3800,7 +3821,7 @@ static void multiseedSearchWorker_hisat2(void *vp) {
                     seedSumm,             //rdid suppress alignments?
                     templateLenAdjustment);*/
             //assert(!retry || msinkwrap.empty());
-            msinkwraps.clear();
+            //msinkwraps.clear();
 		} // if(rdid >= skipReads && rdid < qUpto)
 		else if(rdid >= qUpto) {
 			break;
