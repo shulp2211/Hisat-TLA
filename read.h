@@ -101,7 +101,7 @@ struct Read {
             ns_ = 0;
             swap(patFw, patFw1);
             //patFw = patFw1;
-            //name.insert('*', 0);
+            name.insert('*', 0);
             plan = 'B';
             finalize();
         }
